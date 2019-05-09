@@ -95,11 +95,13 @@ public class ApiTypeMapper implements IApiTypeMapper, ResourcePropertyKeys {
 
     private IVersionedApiResource endpointFor(String version, String kind) {
         String[] split = StringUtils.isBlank(version) ? new String[] {} : version.split(FWD_SLASH);
-        Optional<IVersionedApiResource> result = null;
+        Optional<? extends IVersionedApiResource> result = null;
         if (split.length <= 1) {
-            result = Stream.of(KUBE_API, OS_API)
-                    .map(api -> formatEndpointFor(api, (split.length == 0 ? preferedVersion.get(api) : split[0]), kind))
-                    .filter(e -> resourceEndpoints.contains(e)).findFirst();
+            result = resourceEndpoints.stream().filter(e -> {
+                return e.getKind().equals(kind) && (split.length == 0 || e.getVersion().equals(split[split.length - 1]))
+                        && (split.length < 2 || e.getApiGroupName().equals(split[0]));
+
+            }).findFirst();
         } else {
             result = Optional.of(formatEndpointFor(API_GROUPS_API, version, kind));
         }
@@ -111,7 +113,7 @@ public class ApiTypeMapper implements IApiTypeMapper, ResourcePropertyKeys {
         }
         return null;
     }
-
+    
     private IVersionedApiResource formatEndpointFor(String prefix, String version, String kind) {
         return new VersionedApiResource(prefix, version, ResourceKind.pluralize(kind, true, true));
     }
@@ -163,20 +165,29 @@ public class ApiTypeMapper implements IApiTypeMapper, ResourcePropertyKeys {
     }
 
     private Collection<ModelNode> getResources(IApiGroup group, String version) {
-        String json = readEndpoint(group.pathFor(version));
-        if (StringUtils.isBlank(json)) {
+        try {
+            String json = readEndpoint(group.pathFor(version));
+            if (StringUtils.isBlank(json)) {
+                return new ArrayList<>();
+            }
+            ModelNode node = ModelNode.fromJSONString(json);
+            return node.get("resources").asList();
+        } catch (Exception e) {
+            LOGGER.error("Can't loader api group %1", group.pathFor(version));
             return new ArrayList<>();
         }
-        ModelNode node = ModelNode.fromJSONString(json);
-        return node.get("resources").asList();
     }
 
     private Collection<ApiGroup> getLegacyGroups() {
         Collection<ApiGroup> groups = new ArrayList<>();
         for (String e : Arrays.asList(KUBE_API, OS_API)) {
-            String json = readEndpoint(e);
-            ModelNode n = ModelNode.fromJSONString(json);
-            groups.add(new LegacyApiGroup(e, n));
+            try {
+                String json = readEndpoint(e);
+                ModelNode n = ModelNode.fromJSONString(json);
+                groups.add(new LegacyApiGroup(e, n));
+            } catch (Exception ex) {
+                LOGGER.error("Can't access legacy endpoint %1", e);
+            }
         }
         return groups;
     }
