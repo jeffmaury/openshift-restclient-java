@@ -189,9 +189,7 @@ public class IntegrationTestHelper implements ResourcePropertyKeys {
     }
 
     public IDeploymentConfig stubDeploymentConfig(IClient client, String namespace, String name) {
-        IDeploymentConfig dc = new ResourceFactory(client).create("v1", ResourceKind.DEPLOYMENT_CONFIG);
-        ((DeploymentConfig) dc).setName(name);
-        ((DeploymentConfig) dc).setNamespace(namespace);
+        IDeploymentConfig dc = new ResourceFactory(client).stub(ResourceKind.DEPLOYMENT_CONFIG, name, namespace);
         dc.setReplicas(1);
         dc.setReplicaSelector("foo", "bar");
         dc.addContainer(dc.getName(), 

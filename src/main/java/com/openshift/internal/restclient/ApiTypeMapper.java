@@ -98,6 +98,7 @@ public class ApiTypeMapper implements IApiTypeMapper, ResourcePropertyKeys {
         Optional<? extends IVersionedApiResource> result = null;
         if (split.length <= 1) {
             result = resourceEndpoints.stream().filter(e -> {
+                System.out.println("Testing " + kind + " against " + e + "(" + e.getKind() + ")");
                 return e.getKind().equals(kind) && (split.length == 0 || e.getVersion().equals(split[split.length - 1]))
                         && (split.length < 2 || e.getApiGroupName().equals(split[0]));
 
@@ -115,7 +116,7 @@ public class ApiTypeMapper implements IApiTypeMapper, ResourcePropertyKeys {
     }
     
     private IVersionedApiResource formatEndpointFor(String prefix, String version, String kind) {
-        return new VersionedApiResource(prefix, version, ResourceKind.pluralize(kind, true, true));
+        return new VersionedApiResource(prefix, version, ResourceKind.pluralize(kind, true, true), kind);
     }
 
     private synchronized void init() {
@@ -285,7 +286,7 @@ public class ApiTypeMapper implements IApiTypeMapper, ResourcePropertyKeys {
         private String apiGroupName;
         private String kind;
 
-        VersionedApiResource(String prefix, String version, String name) {
+        VersionedApiResource(String prefix, String version, String name, String kind) {
             if (version == null) {
                 throw new IllegalArgumentException("version can not be null when creating a VersionedApiResource ");
             }
@@ -298,6 +299,7 @@ public class ApiTypeMapper implements IApiTypeMapper, ResourcePropertyKeys {
             this.name = name;
             this.version = version;
             this.namespaced = false;
+            this.kind = kind;
         }
 
         VersionedApiResource(String prefix, String apiGroupName, String version, String name, String kind,
@@ -365,6 +367,7 @@ public class ApiTypeMapper implements IApiTypeMapper, ResourcePropertyKeys {
             result = prime * result + ((name == null) ? 0 : name.hashCode());
             result = prime * result + ((prefix == null) ? 0 : prefix.hashCode());
             result = prime * result + ((version == null) ? 0 : version.hashCode());
+            result = prime * result + ((kind == null) ? 0 : kind.hashCode());
             return result;
         }
 
@@ -387,11 +390,11 @@ public class ApiTypeMapper implements IApiTypeMapper, ResourcePropertyKeys {
             } else if (!apiGroupName.equals(other.apiGroupName)) {
                 return false;
             }
-            if (name == null) {
-                if (other.name != null) {
+            if (kind == null) {
+                if (other.kind != null) {
                     return false;
                 }
-            } else if (!name.equals(other.name)) {
+            } else if (!kind.equals(other.kind)) {
                 return false;
             }
             if (prefix == null) {

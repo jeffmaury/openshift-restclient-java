@@ -256,15 +256,20 @@ public class ResourceFactory implements IResourceFactory {
     @SuppressWarnings("unchecked")
     @Override
     public <T extends IResource> T stub(String kind, String name, String namespace) {
-        // TODO get k8e or os
-        String version = client.getOpenShiftAPIVersion();
-        KubernetesResource resource = (KubernetesResource) create(version, kind);
-        resource.setName(name);
-        resource.setNamespace(namespace);
-        if (StringUtils.isNotEmpty(namespace)) {
+        IVersionedApiResource resourceAPI = client.adapt(IApiTypeMapper.class).getEndpointFor("", kind);
+        if (resourceAPI != null) {
+            String version = StringUtils.isEmpty(resourceAPI.getApiGroupName()) ? resourceAPI.getVersion()
+                    : resourceAPI.getApiGroupName() + IApiTypeMapper.FWD_SLASH + resourceAPI.getVersion();
+            KubernetesResource resource = (KubernetesResource) create(version, kind);
+            resource.setName(name);
             resource.setNamespace(namespace);
+            if (StringUtils.isNotEmpty(namespace)) {
+                resource.setNamespace(namespace);
+            }
+            return (T) resource;
+        } else {
+            throw new RuntimeException(String.format("Unable to find resource version from kind %s", kind)); 
         }
-        return (T) resource;
     }
 
     @Override
